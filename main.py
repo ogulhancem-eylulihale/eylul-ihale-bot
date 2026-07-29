@@ -8,7 +8,6 @@ import xml.etree.ElementTree as ET
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8982659785:AAGAChufDG5Jex36U0rtq04UavJAu9041W8")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284")
 
-# EKAP üzerinde aramak istediğin tüm anahtar kelimeler
 ARAMA_KELIMELERI = [
     "duyuru", "tanıtım", "billboard", "baskı", "montaj", 
     "reklam", "folyo", "tabela", "clp", "raket", "totem", "vinil"
@@ -39,7 +38,6 @@ def ihale_uygun_mu(baslik):
     return any(kw in baslik_kucuk for kw in ARAMA_KELIMELERI)
 
 def tum_belediye_ihalelerini_tara():
-    # Resmi İhale ve Belediye Yayın Akışları
     rss_urls = [
         "https://www.ilan.gov.tr/rss/kategori/ihale-ilanlari/11",
         "https://www.ilan.gov.tr/rss/kategori/belediye-ilanlari/27"
