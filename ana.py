@@ -5,8 +5,9 @@ import ssl
 import urllib.request
 import xml.etree.ElementTree as ET
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8982659785:AAGAChufDG5Jex36U0rtq04UavJAu9041W8")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284")
+# Gizli karakterleri ve alt satira gecisleri (.strip() ile) temizliyoruz
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8982659785:AAGAChufDG5Jex36U0rtq04UavJAu9041W8").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284").strip()
 
 ARAMA_KELIMELERI = [
     "duyuru", "tanıtım", "reklam", "baskı", "montaj", 
@@ -76,7 +77,6 @@ def tum_belediye_ihalelerini_tara():
 
 def main():
     today = datetime.date.today()
-    next_30_days = today + datetime.timedelta(days=30)
     
     ihaleler = tum_belediye_ihalelerini_tara()
     
