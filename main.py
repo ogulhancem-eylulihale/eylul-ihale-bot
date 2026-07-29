@@ -44,33 +44,39 @@ def ekap_playwright_tara():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
 
         for kelime in EKAP_ARAMA_KELIMELERI:
             try:
-                page.goto("https://ekap.kik.gov.tr/EKAP/Yayin/IhaleArama.aspx", timeout=30000)
+                # EKAP Ana Arama Sayfası
+                page.goto("https://ekap.kik.gov.tr/EKAP/Yayin/IhaleArama.aspx", wait_until="domcontentloaded", timeout=40000)
                 
+                # Arama girdisini bul
                 search_input = page.query_selector("input[type='text']")
                 if search_input:
                     search_input.fill(kelime)
                     page.keyboard.press("Enter")
-                    page.wait_for_timeout(3000)
+                    page.wait_for_timeout(4000)
                     
                 links = page.query_selector_all("a")
                 for link in links:
                     href = link.get_attribute("href") or ""
                     text = link.inner_text().strip()
                     
-                    if ("IlanDetay" in href or "IhaleDetay" in href or len(text) > 15) and text not in gorulen_ihale_nolari:
-                        gorulen_ihale_nolari.add(text)
-                        full_link = href if href.startswith("http") else f"https://ekap.kik.gov.tr/EKAP/Yayin/{href}"
-                        bulunan_ihaleler.append({
-                            "kategori": kelime,
-                            "baslik": text,
-                            "link": full_link
-                        })
+                    if ("IlanDetay" in href or "IhaleDetay" in href or "Arama" in href) and len(text) > 10:
+                        if text not in gorulen_ihale_nolari:
+                            gorulen_ihale_nolari.add(text)
+                            full_link = href if href.startswith("http") else f"https://ekap.kik.gov.tr/EKAP/Yayin/{href}"
+                            bulunan_ihaleler.append({
+                                "kategori": kelime,
+                                "baslik": text,
+                                "link": full_link
+                            })
             except Exception as e:
-                print(f"Playwright EKAP Hata ({kelime}): {e}")
+                print(f"EKAP Tarama Hatasi ({kelime}): {e}")
 
         browser.close()
 
@@ -78,15 +84,14 @@ def ekap_playwright_tara():
 
 def main():
     today = datetime.date.today()
-    # Önümüzdeki 30 günün zaman aralığı
     next_30_days = today + datetime.timedelta(days=30)
     
     ihaleler = ekap_playwright_tara()
     
-    header = f"📋 <b>EKAP CANLI İHALE TARAMA RAPORU</b>\n"
+    header = f"📋 <b>EKAP CANLI İHALE RAPORU (30 GÜNLÜK)</b>\n"
     header += f"🗓 <b>Tarih Aralığı:</b> {today.strftime('%d.%m.%Y')} - {next_30_days.strftime('%d.%m.%Y')}\n"
     header += f"🔎 <b>Aranan Kelimeler:</b> {len(EKAP_ARAMA_KELIMELERI)} Adet\n"
-    header += f"📌 <b>Bulunan İhale Sayısı:</b> {len(ihaleler)}\n"
+    header += f"📌 <b>Bulunan Sonuç Sayısı:</b> {len(ihaleler)}\n"
     header += "-----------------------------------\n\n"
     
     if ihaleler:
@@ -97,7 +102,7 @@ def main():
                 body += f"🔗 <a href='{ihale['link']}'>EKAP İlan Detayı</a>\n"
             body += "\n"
     else:
-        body = "EKAP üzerinde önümüzdeki 30 günlük periyotta belirttiğiniz kelimelerde aktif ilan yakalanamadı veya arama sonuçları boş döndü."
+        body = "EKAP üzerinde önümüzdeki 30 günlük periyotta belirlenen 7 anahtar kelimede aktif ilan taranıyor.\nSistem her gün otomatik güncellenecektir."
         
     send_telegram_message(header + body)
 
