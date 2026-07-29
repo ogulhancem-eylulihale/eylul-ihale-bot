@@ -3,19 +3,15 @@ import datetime
 import json
 import ssl
 import urllib.request
-from playwright.sync_api import sync_playwright
+import xml.etree.ElementTree as ET
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8982659785:AAGAChufDG5Jex36U0rtq04UavJAu9041W8")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284")
 
-EKAP_ARAMA_KELIMELERI = [
-    "Duyuru tanıtım",
-    "Billboard",
-    "Baskı montaj",
-    "Reklam",
-    "Folyo baskı",
-    "Tabela",
-    "Clp raket"
+# EKAP üzerinde aramak istediğin tüm anahtar kelimeler
+ARAMA_KELIMELERI = [
+    "duyuru", "tanıtım", "billboard", "baskı", "montaj", 
+    "reklam", "folyo", "tabela", "clp", "raket", "totem", "vinil"
 ]
 
 def send_telegram_message(message):
@@ -38,71 +34,64 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"Telegram mesaj gonderme hatasi: {e}")
 
-def ekap_playwright_tara():
+def ihale_uygun_mu(baslik):
+    baslik_kucuk = baslik.lower()
+    return any(kw in baslik_kucuk for kw in ARAMA_KELIMELERI)
+
+def tum_belediye_ihalelerini_tara():
+    # Resmi İhale ve Belediye Yayın Akışları
+    rss_urls = [
+        "https://www.ilan.gov.tr/rss/kategori/ihale-ilanlari/11",
+        "https://www.ilan.gov.tr/rss/kategori/belediye-ilanlari/27"
+    ]
+    
     bulunan_ihaleler = []
-    gorulen_ihale_nolari = set()
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
-
-        for kelime in EKAP_ARAMA_KELIMELERI:
-            try:
-                # EKAP Ana Arama Sayfası
-                page.goto("https://ekap.kik.gov.tr/EKAP/Yayin/IhaleArama.aspx", wait_until="domcontentloaded", timeout=40000)
+    gorulen = set()
+    context = ssl._create_unverified_context()
+    
+    for url in rss_urls:
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=context, timeout=15) as response:
+                xml_data = response.read()
+                root = ET.fromstring(xml_data)
                 
-                # Arama girdisini bul
-                search_input = page.query_selector("input[type='text']")
-                if search_input:
-                    search_input.fill(kelime)
-                    page.keyboard.press("Enter")
-                    page.wait_for_timeout(4000)
+                for item in root.findall('.//item'):
+                    title = item.find('title').text if item.find('title') is not None else ""
+                    link = item.find('link').text if item.find('link') is not None else ""
                     
-                links = page.query_selector_all("a")
-                for link in links:
-                    href = link.get_attribute("href") or ""
-                    text = link.inner_text().strip()
-                    
-                    if ("IlanDetay" in href or "IhaleDetay" in href or "Arama" in href) and len(text) > 10:
-                        if text not in gorulen_ihale_nolari:
-                            gorulen_ihale_nolari.add(text)
-                            full_link = href if href.startswith("http") else f"https://ekap.kik.gov.tr/EKAP/Yayin/{href}"
-                            bulunan_ihaleler.append({
-                                "kategori": kelime,
-                                "baslik": text,
-                                "link": full_link
-                            })
-            except Exception as e:
-                print(f"EKAP Tarama Hatasi ({kelime}): {e}")
-
-        browser.close()
-
+                    if ihale_uygun_mu(title) and title not in gorulen:
+                        gorulen.add(title)
+                        bulunan_ihaleler.append({
+                            "baslik": title,
+                            "link": link
+                        })
+        except Exception as e:
+            print(f"Tarama Hatasi ({url}): {e}")
+            
     return bulunan_ihaleler
 
 def main():
     today = datetime.date.today()
     next_30_days = today + datetime.timedelta(days=30)
     
-    ihaleler = ekap_playwright_tara()
+    ihaleler = tum_belediye_ihalelerini_tara()
     
-    header = f"📋 <b>EKAP CANLI İHALE RAPORU (30 GÜNLÜK)</b>\n"
+    header = f"📋 <b>TÜM BELEDİYELER EKAP İHALE TARAMASI</b>\n"
     header += f"🗓 <b>Tarih Aralığı:</b> {today.strftime('%d.%m.%Y')} - {next_30_days.strftime('%d.%m.%Y')}\n"
-    header += f"🔎 <b>Aranan Kelimeler:</b> {len(EKAP_ARAMA_KELIMELERI)} Adet\n"
+    header += f"🔎 <b>Aranan Kelimeler:</b> Duyuru, Billboard, Baskı, Tabela, CLP, Raket vb.\n"
     header += f"📌 <b>Bulunan Sonuç Sayısı:</b> {len(ihaleler)}\n"
     header += "-----------------------------------\n\n"
     
     if ihaleler:
         body = ""
         for idx, ihale in enumerate(ihaleler[:15], 1):
-            body += f"{idx}. [<b>{ihale['kategori']}</b>] {ihale['baslik']}\n"
+            body += f"{idx}. 📌 <b>{ihale['baslik']}</b>\n"
             if ihale['link']:
-                body += f"🔗 <a href='{ihale['link']}'>EKAP İlan Detayı</a>\n"
+                body += f"🔗 <a href='{ihale['link']}'>İlan Detayına Git</a>\n"
             body += "\n"
     else:
-        body = "EKAP üzerinde önümüzdeki 30 günlük periyotta belirlenen 7 anahtar kelimede aktif ilan taranıyor.\nSistem her gün otomatik güncellenecektir."
+        body = "Önümüzdeki 30 günlük periyotta belirttiğiniz anahtar kelimelerle eşleşen yeni bir belediye ihalesi bulunamadı.\nBot arka planda aramaya devam ediyor."
         
     send_telegram_message(header + body)
 
