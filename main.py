@@ -9,8 +9,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8982659785:AAGAChufDG5Jex36U0rtq04
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284")
 
 ARAMA_KELIMELERI = [
-    "duyuru", "tanıtım", "billboard", "baskı", "montaj", 
-    "reklam", "folyo", "tabela", "clp", "raket", "totem", "vinil"
+    "duyuru", "tanıtım", "reklam", "baskı", "montaj", 
+    "folyo", "tabela", "clp", "raket", "totem", "vinil"
 ]
 
 def send_telegram_message(message):
