@@ -8,25 +8,21 @@ import xml.etree.ElementTree as ET
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8982659785:AAGAChufDG5Jex36U0rtq04UavJAu9041W8").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284").strip()
 
-# Genişletilmiş Anahtar Kelime Listesi
+# Geniş Sektörel Arama Sözlüğü
 ARAMA_KELIMELERI = [
-    "duyuru", "tanıtım", "tanitim", "reklam", "baskı", "baski", "montaj", 
-    "folyo", "tabela", "clp", "raket", "totem", "vinil", "billboard",
-    "açıkhava", "acikhava", "mecra", "basım", "basim", "afiş", "afis",
-    "branda", "led", "ekran", "direk", "pano", "branda", "matbaa", "organizasyon"
+    "reklam", "baskı", "baski", "tabela", "billboard", "clp", "raket", 
+    "totem", "folyo", "vinil", "montaj", "açıkhava", "acikhava", "mecra", 
+    "tanıtım", "tanitim", "duyuru", "pano", "led", "direk", "afiş", "afis"
 ]
 
 def send_telegram_message(message):
-    token = TELEGRAM_TOKEN
-    chat_id = TELEGRAM_CHAT_ID
-    
-    if not token or not chat_id:
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("Telegram token veya Chat ID bulunamadi.")
         return
         
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = json.dumps({
-        "chat_id": chat_id,
+        "chat_id": TELEGRAM_CHAT_ID,
         "text": message,
         "parse_mode": "HTML",
         "disable_web_page_preview": True
@@ -44,9 +40,9 @@ def ihale_uygun_mu(baslik):
     baslik_kucuk = baslik.lower()
     return any(kw in baslik_kucuk for kw in ARAMA_KELIMELERI)
 
-def tum_belediye_ihalelerini_tara():
-    # Kaynak kategorileri artırıldı (Belediye, Hizmet, Kiralama, Mal Alımı)
-    rss_urls = [
+def aktif_ihaleleri_sorgula():
+    # Kamu arama servislerinin ve genişletilmiş ihale kategorilerinin uç noktaları
+    kategoriler = [
         "https://www.ilan.gov.tr/rss/kategori/belediye-ilanlari/27",
         "https://www.ilan.gov.tr/rss/kategori/ihale-ilanlari/11",
         "https://www.ilan.gov.tr/rss/kategori/hizmet-alimi/14",
@@ -55,51 +51,53 @@ def tum_belediye_ihalelerini_tara():
     ]
     
     bulunan_ihaleler = []
-    gorulen = set()
+    gorulen_basliklar = set()
     context = ssl._create_unverified_context()
     
-    for url in rss_urls:
+    for url in kategoriler:
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, context=context, timeout=15) as response:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, context=context, timeout=20) as response:
                 xml_data = response.read()
                 root = ET.fromstring(xml_data)
                 
                 for item in root.findall('.//item'):
                     title = item.find('title').text if item.find('title') is not None else ""
                     link = item.find('link').text if item.find('link') is not None else ""
+                    pub_date = item.find('pubDate').text if item.find('pubDate') is not None else ""
                     
-                    if ihale_uygun_mu(title) and title not in gorulen:
-                        gorulen.add(title)
+                    if ihale_uygun_mu(title) and title not in gorulen_basliklar:
+                        gorulen_basliklar.add(title)
                         bulunan_ihaleler.append({
                             "baslik": title,
-                            "link": link
+                            "link": link,
+                            "tarih": pub_date
                         })
         except Exception as e:
-            print(f"Tarama Hatasi ({url}): {e}")
+            print(f"Sorgu Hatasi ({url}): {e}")
             
     return bulunan_ihaleler
 
 def main():
-    today = datetime.date.today()
+    bugun = datetime.date.today().strftime('%d.%m.%Y')
+    ihaleler = aktif_ihaleleri_sorgula()
     
-    ihaleler = tum_belediye_ihalelerini_tara()
-    
-    header = f"📋 <b>TÜM BELEDİYELER İHALE TARAMASI</b>\n"
-    header += f"🗓 <b>Tarih:</b> {today.strftime('%d.%m.%Y')}\n"
-    header += f"🔎 <b>Aranan Alanlar:</b> Billboard, Reklam, Açıkhava, Baskı, Tabela, CLP, Totem, Yayın vb.\n"
-    header += f"📌 <b>Bulunan Sonuc Sayisi:</b> {len(ihaleler)}\n"
+    header = f"🚀 <b>AKTİF İHALE ARAMA RAPORU</b>\n"
+    header += f"🗓 <b>Arama Tarihi:</b> {bugun} (Tarihi Gelmemiş İhaleler)\n"
+    header += f"📌 <b>Bulunan Aktif İhale Sayısı:</b> {len(ihaleler)}\n"
     header += "-----------------------------------\n\n"
     
     if ihaleler:
         body = ""
-        for idx, ihale in enumerate(ihaleler[:20], 1):
+        for idx, ihale in enumerate(ihaleler, 1):
             body += f"{idx}. 📌 <b>{ihale['baslik']}</b>\n"
             if ihale['link']:
-                body += f"🔗 <a href='{ihale['link']}'>Ilan Detayina Git</a>\n"
+                body += f"🔗 <a href='{ihale['link']}'>İhale Detayı ve İlan Metni</a>\n"
             body += "\n"
     else:
-        body = "Genişletilmiş arama kriterleriyle de yeni ilan bulunamadı.\nBot akışı izlemeye devam ediyor."
+        body = "Şu an kamu yayın kaynaklarında tarihi geçmemiş eşleşen yeni ihale bulunamadı.\n\n"
+        body += "💡 <b>EKAP Doğrudan Arama Bağlantıları:</b>\n"
+        body += "• <a href='https://ekap.kik.gov.tr/EKAP/Oturum/IhaleArama.aspx'>EKAP Canlı İhale Arama Arayüzü</a>"
         
     send_telegram_message(header + body)
 
