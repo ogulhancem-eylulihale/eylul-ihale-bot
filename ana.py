@@ -10,16 +10,21 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284")
 
 ARAMA_KELIMELERI = [
     "duyuru", "tanıtım", "reklam", "baskı", "montaj", 
-    "folyo", "tabela", "clp", "raket", "totem", "vinil"
+    "folyo", "tabela", "clp", "raket", "totem", "vinil",
+    "billboard"
 ]
 
 def send_telegram_message(message):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    token = TELEGRAM_TOKEN
+    chat_id = TELEGRAM_CHAT_ID
+    
+    if not token or not chat_id:
         print("Telegram token veya Chat ID bulunamadi.")
         return
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = json.dumps({
-        "chat_id": TELEGRAM_CHAT_ID,
+        "chat_id": chat_id,
         "text": message,
         "parse_mode": "HTML",
         "disable_web_page_preview": True
@@ -75,9 +80,9 @@ def main():
     
     ihaleler = tum_belediye_ihalelerini_tara()
     
-    header = f"📋 <b>TÜM BELEDİYELER EKAP İHALE TARAMASI</b>\n"
-    header += f"🗓 <b>Tarih Aralığı:</b> {today.strftime('%d.%m.%Y')} - {next_30_days.strftime('%d.%m.%Y')}\n"
-    header += f"🔎 <b>Aranan Kelimeler:</b> Duyuru, Billboard, Baskı, Tabela, CLP, Raket vb.\n"
+    header = f"📋 <b>TÜM BELEDİYELER İHALE TARAMASI</b>\n"
+    header += f"🗓 <b>Tarih:</b> {today.strftime('%d.%m.%Y')}\n"
+    header += f"🔎 <b>Aranan Kelimeler:</b> Billboard, Duyuru, Tanıtım, Reklam, Baskı, Montaj, Tabela, CLP, Raket vb.\n"
     header += f"📌 <b>Bulunan Sonuç Sayısı:</b> {len(ihaleler)}\n"
     header += "-----------------------------------\n\n"
     
@@ -89,7 +94,7 @@ def main():
                 body += f"🔗 <a href='{ihale['link']}'>İlan Detayına Git</a>\n"
             body += "\n"
     else:
-        body = "Önümüzdeki 30 günlük periyotta belirttiğiniz anahtar kelimelerle eşleşen yeni bir belediye ihalesi bulunamadı.\nBot arka planda aramaya devam ediyor."
+        body = "Belirttiğiniz anahtar kelimelerle eşleşen yeni bir ihale bulunamadı.\nBot arka planda aramaya devam ediyor."
         
     send_telegram_message(header + body)
 
