@@ -2,11 +2,11 @@ import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 import urllib.request
 import json
-import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
 import os
 
-BOT_TOKEN = "8982659785:AAGAChufDG5Jex36U0rtq04UavJAu9041W8"
-CHAT_ID = "1386569284"
+BOT_TOKEN = "8982659785:AAGAChufDG5Jex36U0rtq04UavJ"
+CHAT_ID = "-1002386569284"
 
 # --- FİLTRELEME KRİTERLERİ ---
 OZEL_MECRALAR = ["billboard", "bilboard", "clp", "raket", "totem", "megalight"]
