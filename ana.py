@@ -5,14 +5,15 @@ import ssl
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# Gizli karakterleri ve alt satira gecisleri (.strip() ile) temizliyoruz
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8982659785:AAGAChufDG5Jex36U0rtq04UavJAu9041W8").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1386569284").strip()
 
+# Genişletilmiş Anahtar Kelime Listesi
 ARAMA_KELIMELERI = [
-    "duyuru", "tanıtım", "reklam", "baskı", "montaj", 
-    "folyo", "tabela", "clp", "raket", "totem", "vinil",
-    "billboard"
+    "duyuru", "tanıtım", "tanitim", "reklam", "baskı", "baski", "montaj", 
+    "folyo", "tabela", "clp", "raket", "totem", "vinil", "billboard",
+    "açıkhava", "acikhava", "mecra", "basım", "basim", "afiş", "afis",
+    "branda", "led", "ekran", "direk", "pano", "branda", "matbaa", "organizasyon"
 ]
 
 def send_telegram_message(message):
@@ -44,9 +45,13 @@ def ihale_uygun_mu(baslik):
     return any(kw in baslik_kucuk for kw in ARAMA_KELIMELERI)
 
 def tum_belediye_ihalelerini_tara():
+    # Kaynak kategorileri artırıldı (Belediye, Hizmet, Kiralama, Mal Alımı)
     rss_urls = [
+        "https://www.ilan.gov.tr/rss/kategori/belediye-ilanlari/27",
         "https://www.ilan.gov.tr/rss/kategori/ihale-ilanlari/11",
-        "https://www.ilan.gov.tr/rss/kategori/belediye-ilanlari/27"
+        "https://www.ilan.gov.tr/rss/kategori/hizmet-alimi/14",
+        "https://www.ilan.gov.tr/rss/kategori/kiralama/19",
+        "https://www.ilan.gov.tr/rss/kategori/mal-alimi/13"
     ]
     
     bulunan_ihaleler = []
@@ -82,19 +87,19 @@ def main():
     
     header = f"📋 <b>TÜM BELEDİYELER İHALE TARAMASI</b>\n"
     header += f"🗓 <b>Tarih:</b> {today.strftime('%d.%m.%Y')}\n"
-    header += f"🔎 <b>Aranan Kelimeler:</b> Billboard, Duyuru, Tanıtım, Reklam, Baskı, Montaj, Tabela, CLP, Raket vb.\n"
-    header += f"📌 <b>Bulunan Sonuç Sayısı:</b> {len(ihaleler)}\n"
+    header += f"🔎 <b>Aranan Alanlar:</b> Billboard, Reklam, Açıkhava, Baskı, Tabela, CLP, Totem, Yayın vb.\n"
+    header += f"📌 <b>Bulunan Sonuc Sayisi:</b> {len(ihaleler)}\n"
     header += "-----------------------------------\n\n"
     
     if ihaleler:
         body = ""
-        for idx, ihale in enumerate(ihaleler[:15], 1):
+        for idx, ihale in enumerate(ihaleler[:20], 1):
             body += f"{idx}. 📌 <b>{ihale['baslik']}</b>\n"
             if ihale['link']:
-                body += f"🔗 <a href='{ihale['link']}'>İlan Detayına Git</a>\n"
+                body += f"🔗 <a href='{ihale['link']}'>Ilan Detayina Git</a>\n"
             body += "\n"
     else:
-        body = "Belirttiğiniz anahtar kelimelerle eşleşen yeni bir ihale bulunamadı.\nBot arka planda aramaya devam ediyor."
+        body = "Genişletilmiş arama kriterleriyle de yeni ilan bulunamadı.\nBot akışı izlemeye devam ediyor."
         
     send_telegram_message(header + body)
 
